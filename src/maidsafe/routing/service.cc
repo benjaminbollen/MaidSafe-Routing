@@ -113,6 +113,9 @@ void Service::Connect(protobuf::Message& message) {
       GetEndpointFromProtobuf(connect_request.contact().public_endpoint());
   peer_endpoint_pair.local = GetEndpointFromProtobuf(connect_request.contact().private_endpoint());
 
+  std::cout << peer_endpoint_pair.local.address().to_string() << " service local "  << peer_endpoint_pair.local.port() << "\n";
+  std::cout << peer_endpoint_pair.external.address().to_string() << " service external "  << peer_endpoint_pair.external.port() << "\n";
+
   if (peer_endpoint_pair.external.address().is_unspecified() &&
       peer_endpoint_pair.local.address().is_unspecified()) {
     LOG(kWarning) << "Invalid endpoint pair provided in connect request.";

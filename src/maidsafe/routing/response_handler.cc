@@ -199,6 +199,8 @@ void ResponseHandler::SendConnectRequest(const NodeId peer_node_id) {
       relay_connection_id = network_.this_node_relay_connection_id();
       relay_message = true;
     }
+    std::cout << this_endpoint_pair.local.address().to_string() << " local "  << this_endpoint_pair.local.port() << "\n";
+    std::cout << this_endpoint_pair.external.address().to_string() << " external "  << this_endpoint_pair.external.port() << "\n";
     protobuf::Message connect_rpc(rpcs::Connect(
         peer.id, this_endpoint_pair, routing_table_.kNodeId(), routing_table_.kConnectionId(),
         routing_table_.client_mode(), this_nat_type, relay_message, relay_connection_id));
