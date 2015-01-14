@@ -98,6 +98,8 @@ ms_add_static_library(maidsafe_routing
 target_include_directories(maidsafe_routing PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(maidsafe_routing maidsafe_rudp maidsafe_passport ${BoostCoroutineLibs} ${BoostContextLibs})
 
+ms_add_executable(routing_node Production ${RoutingSourcesDir}/routing_node_main.cc)
+
 if(INCLUDE_TESTS)
   ms_add_static_library(maidsafe_test_routing
         ${RoutingSourcesDir}/tests/utils/test_main.cc
