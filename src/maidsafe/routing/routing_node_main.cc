@@ -16,11 +16,42 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                */
 
+#include "maidsafe/common/asio_service.h"
+#include "boost/filesystem/path.hpp"
+
 #include "maidsafe/routing/utils.h"
 #include "maidsafe/routing/routing_node.h"
+
+#include "maidsafe/passport/detail/fob.h"
+
+
 
 int main(int argc, char* argv[]) {
     using maidsafe::routing::RoutingNode;
     int exit_code(0);
 
+    const boost::filesystem::path kPathToBootstrap(
+                maidsafe::ThisExecutableDir() / "routing_bootstrap.dat");
+
+    const passport::PmidAndSigner pmid_and_signer(passport::CreatePmidAndSigner());
+    const passport::Pmid pmid_key(pmid_and_signer.first);
+    
+    try {
+        auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
+        if (unuseds.size() != 2U)
+          BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+
+        // TODO: thread_count is to be determined
+        maidsafe::IoService<boost::asio::io_service> io_service(30);
+        RoutingNode routing_node(&io_service.service(), kPathToBootstrap,
+                                 pmid_key, std::shared_ptr<RoutingNode::Listener>());
+    }
+    catch (const maidsafe::maidsafe_error& error) {
+
+
+    }
+    catch (const std::exception& e) {
+        
+    }
+    return exit_code;
 }
