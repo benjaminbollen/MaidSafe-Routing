@@ -16,10 +16,10 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_ROUTING_MESSAGES_REQUEST_H_
-#define MAIDSAFE_ROUTING_MESSAGES_REQUEST_H_
+#ifndef MAIDSAFE_ROUTING_MESSAGES_GET_KEY_RESPONSE_H_
+#define MAIDSAFE_ROUTING_MESSAGES_GET_KEY_RESPONSE_H_
 
-#include <vector>
+#include "boost/optional.hpp"
 
 #include "maidsafe/routing/types.h"
 
@@ -27,47 +27,46 @@ namespace maidsafe {
 
 namespace routing {
 
-struct Request {
-  Request() = default;
-  ~Request() = default;
+struct GetKeyResponse {
+  GetKeyResponse() = default;
+  ~GetKeyResponse() = default;
 
-  template<typename T, typename U, typename V>
-  Request(T&& key_in, U&& data_in, V&& checksum_in)
-      : key{std::forward<T>(key_in)},
-        data{std::forward<U>(data_in)},
-        checksum{std::forward<V>(checksum_in)} {}
+  template <typename T, typename U, typename V>
+  GetKeyResponse(T&& key, U&& data, V&& relay_node)
+      : key{std::forward<T>(key)},
+        data{std::forward<U>(data)},
+        relay_node{std::forward<U>(relay_node)} {}
 
-  Request(Request&& other) MAIDSAFE_NOEXCEPT
-      : key{std::move(other.key)},
-        data{std::move(other.data)},
-        checksum{std::move(other.checksum)} {}
+  template <typename T, typename U>
+  GetKeyResponse(T&& key, U&& data)
+      : key{std::forward<T>(key)}, data{std::forward<U>(data)} {}
 
-  Request& operator=(Request&& other) MAIDSAFE_NOEXCEPT {
+  GetKeyResponse(GetKeyResponse&& other) MAIDSAFE_NOEXCEPT : key{std::move(other.key)},
+                                                             data{std::move(other.data)} {}
+
+  GetKeyResponse& operator=(GetKeyResponse&& other) MAIDSAFE_NOEXCEPT {
     key = std::move(other.key);
     data = std::move(other.data);
-    checksum = std::move(other.checksum);
     return *this;
   }
 
-  Request(const Request&) = delete;
-  Request& operator=(const Request&) = delete;
+  GetKeyResponse(const GetKeyResponse&) = delete;
+  GetKeyResponse& operator=(const GetKeyResponse&) = delete;
 
-  void operator()() {
+  void operator()() {}
 
-  }
-
-  template<typename Archive>
+  template <typename Archive>
   void serialize(Archive& archive) {
-    archive(key, data, checksum);
+    archive(key, data, relay_node);
   }
 
   Address key;
-  SerialisedMessage data;
-  std::vector<crypto::SHA1Hash> checksum;
+  std::vector<byte> data;
+  boost::optional<Address> relay_node;
 };
 
 }  // namespace routing
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_ROUTING_MESSAGES_REQUEST_H_
+#endif  // MAIDSAFE_ROUTING_MESSAGES_GET_KEY_RESPONSE_H_

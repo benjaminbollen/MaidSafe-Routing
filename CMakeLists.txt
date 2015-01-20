@@ -42,7 +42,6 @@ include(../../cmake_modules/standard_setup.cmake)
 set(RoutingSourcesDir ${PROJECT_SOURCE_DIR}/src/maidsafe/routing)
 set(RoutingLibApiFiles
     ${PROJECT_SOURCE_DIR}/include/maidsafe/routing/client.h
-    ${PROJECT_SOURCE_DIR}/include/maidsafe/routing/compile_time_mapper.h
     ${PROJECT_SOURCE_DIR}/include/maidsafe/routing/node_info.h
     ${PROJECT_SOURCE_DIR}/include/maidsafe/routing/routing_node.h
     ${PROJECT_SOURCE_DIR}/include/maidsafe/routing/types.h
@@ -52,7 +51,6 @@ set(RoutingLibHeaders
     ${RoutingSourcesDir}/accumulator.h
     ${RoutingSourcesDir}/bootstrap_handler.h
     ${RoutingSourcesDir}/connection_manager.h
-    ${RoutingSourcesDir}/message_handler.h
     ${RoutingSourcesDir}/message_header.h
     ${RoutingSourcesDir}/routing_table.h
     ${RoutingSourcesDir}/utils.h
@@ -60,6 +58,7 @@ set(RoutingLibHeaders
 source_group("Routing Header Files" FILES ${RoutingLibHeaders})
 set(RoutingMessagesHeaders
     ${RoutingSourcesDir}/messages/connect.h
+    ${RoutingSourcesDir}/messages/connect_response.h
     ${RoutingSourcesDir}/messages/find_group.h
     ${RoutingSourcesDir}/messages/find_group_response.h
     ${RoutingSourcesDir}/messages/get_data.h
@@ -69,15 +68,11 @@ set(RoutingMessagesHeaders
     ${RoutingSourcesDir}/messages/post.h
     ${RoutingSourcesDir}/messages/put_data.h
     ${RoutingSourcesDir}/messages/put_data_response.h
-    ${RoutingSourcesDir}/messages/connect_response.h
-    ${RoutingSourcesDir}/messages/request.h
-    ${RoutingSourcesDir}/messages/response.h
     )
 source_group("Routing Messages Header Files" FILES ${RoutingMessagesHeaders})
 set(RoutingLibSources
     ${RoutingSourcesDir}/bootstrap_handler.cc
     ${RoutingSourcesDir}/connection_manager.cc
-    ${RoutingSourcesDir}/message_handler.cc
     ${RoutingSourcesDir}/routing_table.cc
     ${RoutingSourcesDir}/utils.cc
     ${RoutingSourcesDir}/routing_node.cc

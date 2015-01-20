@@ -29,7 +29,6 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/containers/lru_cache.h"
 #include "maidsafe/common/serialisation/binary_archive.h"
-#include "maidsafe/routing/compile_time_mapper.h"
 
 #include "maidsafe/routing/connection_manager.h"
 #include "maidsafe/routing/message_header.h"
@@ -48,7 +47,7 @@ MessageHandler::MessageHandler(asio::io_service& io_service,
       rudp_(managed_connections),
       connection_manager_(connection_manager),
       cache_(std::chrono::hours(1)),
-      accumulator_(std::chrono::minutes(10)),
+      accumulator_(std::chrono::minutes(10), QuorumSize),
       keys_(keys) {}
 
 // reply with details, require to check incoming ID (GetKey)
@@ -56,6 +55,10 @@ void MessageHandler::HandleMessage(Connect connect, MessageId message_id) {
   if (!connection_manager_.SuggestNodeToAdd(connect.requester_id))
     return;
   // TODO(dirvine) check public key (co-routine)  :05/01/2015
+  // FIXME: the 'connect' local variable will go out of scope and the address
+  // will point somewhere wierd (same with message_id).
+  // FIXME: The body of the handler will happen inside another thread,
+  // and since it (the handler) accesses 'this', it should be wrapped inside a strand.
   rudp_.GetAvailableEndpoints(
       connect.receiver_id,
       [this, &connect, &message_id](asio::error_code error, rudp::EndpointPair endpoint_pair) {
@@ -74,16 +77,16 @@ void MessageHandler::HandleMessage(Connect connect, MessageId message_id) {
                              SourceAddress(std::make_pair(NodeAddress(connection_manager_.OurId()),
                                                           boost::optional<GroupAddress>())),
                              message_id, asymm::Sign(Serialise(respond), keys_.private_key));
+        // FIXME: What's this?
         auto dave = Serialise(header);
+        // FIXME: Don't block inside handlers, it will block everything with it.
         rudp_.Send(connect.receiver_id,
-                   Serialise(header, GivenTypeFindTag_v<ConnectResponse>::value, respond),
+                   Serialise(header, MessageToTag<ConnectResponse>::value(), respond),
                    asio::use_future).get();
       });
 }
-//
-// void MessageHandler::HandleMessage(ConnectResponse /* connect_response */) {}
 
-// void MessageHandler::HandleMessage(ClientConnectResponse /* client_connect_response */) {}
+void MessageHandler::HandleMessage(ConnectResponse /* connect_response */) {}
 
 void MessageHandler::HandleMessage(FindGroup /*find_group*/) {}
 
@@ -97,15 +100,7 @@ void MessageHandler::HandleMessage(PutData /*put_data*/) {}
 
 void MessageHandler::HandleMessage(PutDataResponse /*put_data_response*/) {}
 
-
-// void MessageHandler::HandleMessage(PutKey /* put_key */) {}
-
 void MessageHandler::HandleMessage(Post /*post*/) {}
-
-
-void MessageHandler::HandleMessage(Request /* request */) {}
-void MessageHandler::HandleMessage(Response /* response */) {}
-
 
 SourceAddress MessageHandler::OurSourceAddress() const {
   return std::make_pair(NodeAddress(connection_manager_.OurId()), boost::optional<GroupAddress>());

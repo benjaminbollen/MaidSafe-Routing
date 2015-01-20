@@ -35,8 +35,8 @@
 
 #include "maidsafe/routing/bootstrap_handler.h"
 #include "maidsafe/routing/connection_manager.h"
-#include "maidsafe/routing/message_handler.h"
 #include "maidsafe/routing/message_header.h"
+#include "maidsafe/routing/sentinel.h"
 #include "maidsafe/routing/types.h"
 
 namespace maidsafe {
@@ -46,32 +46,38 @@ namespace routing {
 class RoutingNode : public std::enable_shared_from_this<RoutingNode>,
                     public rudp::ManagedConnections::Listener {
  public:
+  using PutToCache = bool;
+  // The purpose of this object is to allow this API to allow upper layers to override default
+  // behavour of the calls to a routing node where applicable.
   class Listener {
    public:
     explicit Listener(LruCache<Identity, SerialisedMessage>& cache) : cache_(cache) {}
     virtual ~Listener() {}
     // default no post allowed unless implemented in upper layers
-    virtual bool Post(const SerialisedMessage&) { return false; }
-    virtual boost::expected<DataValue, maidsafe_error> Get(DataKey) {
+    virtual bool HandlePost(const SerialisedMessage&) { return false; }
+    // not in local cache do upper layers have it (called when we are in target group)
+    virtual boost::expected<DataValue, maidsafe_error> HandleGet(DataKey) {
       return boost::make_unexpected(MakeError(CommonErrors::no_such_element));
     }
-    virtual boost::expected<std::vector<byte>, maidsafe_error> GetKey(DataKey data) {
+    virtual boost::expected<std::vector<byte>, maidsafe_error> HandleGetKey(DataKey data) {
       auto cache_data = cache_.Get(data);
       if (cache_data)
         return cache_data;
-      else
+      else  // actually in this case get the close group keys and send back
         return boost::make_unexpected(MakeError(CommonErrors::no_such_element));
     }
-    // default no request allowed unless implemented in upper layers
-    virtual boost::expected<SerialisedMessage, maidsafe_error> Request(MessageHeader,
-                                                                       SerialisedMessage) {
-      return boost::make_unexpected(MakeError(CommonErrors::no_such_element));
+    virtual boost::expected<std::vector<byte>, maidsafe_error> HandleGetGroupKey(DataKey data) {
+      auto cache_data = cache_.Get(data);
+      if (cache_data)
+        return cache_data;
+      else  // actually in this case get the close group keys and send back
+        return boost::make_unexpected(MakeError(CommonErrors::no_such_element));
     }
     // default put is allowed unless prevented by upper layers
-    virtual bool Put(DataKey, DataValue) { return true; }
+    virtual PutToCache HandlePut(DataKey, DataValue) { return true; }
     // if the implementation allows any put of data in unauthenticated mode
-    virtual bool UnauthenticatedPut(DataKey, DataValue) { return true; }
-    virtual void CloseGroupDifference(CloseGroupDifference) {}
+    virtual bool HandleUnauthenticatedPut(DataKey, DataValue) { return true; }
+    virtual void HandleCloseGroupDifference(CloseGroupDifference) {}
 
    private:
     LruCache<Identity, SerialisedMessage>& cache_;
@@ -100,10 +106,6 @@ class RoutingNode : public std::enable_shared_from_this<RoutingNode>,
   // will return with allowed or not (error_code only)
   template <typename CompletionToken>
   PostReturn<CompletionToken> Post(Address key, SerialisedMessage message, CompletionToken token);
-  // will return with response message
-  template <typename CompletionToken>
-  RequestReturn<CompletionToken> Request(Address key, SerialisedMessage message,
-                                         CompletionToken token);
 
   Address OurId() const { return our_id_; }
 
@@ -112,15 +114,38 @@ class RoutingNode : public std::enable_shared_from_this<RoutingNode>,
                                            MessageId message_id);
   std::vector<MessageHeader> CreateHeaders(Address target, Checksum checksum, MessageId message_id);
   std::vector<MessageHeader> CreateHeaders(Address target, MessageId message_id);
-  void GetDataResponseReceived(GetData get_data);
-  void PutDataResponseReceived(PutData put_data);
-  void ResponseReceived(Response response);
+  void HandleMessage(Connect connect, MessageId message_id);
+  // recieve connect from node and add nodes publicKey clients request to targetAddress
+  void HandleMessage(ClientConnect client_connect, const MessageHeader& header);
+  // like connect but add targets endpoint
+  void HandleMessage(ConnectResponse connect_response);
+  // like clientconnect adding targets public key (recieved by targets close group) (recieveing
+  // needs a Quorum)
+
+  //  void HandleMessage(ClientConnectResponse client_connect_response);
+  // sent by routing nodes to a network Address
+  void HandleMessage(FindGroup find_group);
+  // each member of the group close to network Address fills in their node_info and replies
+  void HandleMessage(FindGroupResponse find_group_reponse);
+  // may be directly sent to a network Address
+  void HandleMessage(GetData get_data);
+  // Each node wiht the data sends it back to the originator
+  void HandleMessage(GetDataResponse get_data_response);
+  // sent by a client to store data, client does information dispersal and sends a part to each of
+  // its close group
+  void HandleMessage(PutData put_data);
+  void HandleMessage(PutDataResponse put_data);
+  // each member of a group needs to send this to the network address (recieveing needs a Quorum)
+  // filling in public key again.
+  // each member of a group needs to send this to the network Address (recieveing needs a Quorum)
+  // filling in public key again.
+  // void HandleMessage(Post post);
   bool TryCache(MessageTypeTag tag, MessageHeader header, Address data_key);
   virtual void MessageReceived(NodeId peer_id,
                                rudp::ReceivedMessage serialised_message) override final;
   virtual void ConnectionLost(NodeId peer) override final;
   void OnCloseGroupChanged(CloseGroupDifference close_group_difference);
-
+  SourceAddress OurSourceAddress() const;
   using unique_identifier = std::pair<Address, uint32_t>;
   asio::io_service& io_service_;
   Address our_id_;
@@ -130,9 +155,8 @@ class RoutingNode : public std::enable_shared_from_this<RoutingNode>,
   BootstrapHandler bootstrap_handler_;
   ConnectionManager connection_manager_;
   std::shared_ptr<Listener> listener_ptr_;
-  MessageHandler message_handler_;
   LruCache<unique_identifier, void> filter_;
-  Accumulator<unique_identifier, SerialisedMessage> accumulator_;
+  Sentinel sentinel_;
   LruCache<Address, SerialisedMessage> cache_;
   std::map<MessageId, std::function<void(SerialisedMessage)>> responder_;
 };
@@ -166,7 +190,7 @@ GetReturn<CompletionToken> RoutingNode::Get(DataKey data_key, CompletionToken to
   auto result(handler);
   io_service_.post([=] {
     for (const auto& header : CreateHeaders(Address(data_key->string()), ++message_id_)) {
-      rudp_.Send(Address(data_key), Serialise(header, GivenTypeFindTag_v<GetData>::value, data_key),
+      rudp_.Send(Address(data_key), Serialise(header, MessageToTag<GetData>::value(), data_key),
                  handler);
     }
   });

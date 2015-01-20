@@ -16,68 +16,58 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_ROUTING_MESSAGES_PUT_DATA_RESPONSE_H_
-#define MAIDSAFE_ROUTING_MESSAGES_PUT_DATA_RESPONSE_H_
+#ifndef MAIDSAFE_ROUTING_MESSAGES_GET_GROUPKEY_RESPONSE_H_
+#define MAIDSAFE_ROUTING_MESSAGES_GET_GROUPKEY_RESPONSE_H_
 
-#include <cstdint>
-#include "boost/optional/optional.hpp"
-#include "maidsafe/common/config.h"
-#include "maidsafe/common/error.h"
-#include "maidsafe/common/rsa.h"
-#include "maidsafe/common/utils.h"
+#include "boost/optional.hpp"
 
-#include "maidsafe/routing/message_header.h"
 #include "maidsafe/routing/types.h"
-#include "maidsafe/routing/messages/messages_fwd.h"
-#include "maidsafe/routing/messages/put_data.h"
 
 namespace maidsafe {
 
 namespace routing {
 
-struct PutDataResponse {
-  PutDataResponse() = default;
-  ~PutDataResponse() = default;
+struct GetGroupKeyResponse {
+  GetGroupKeyResponse() = default;
+  ~GetGroupKeyResponse() = default;
 
   template <typename T, typename U, typename V>
-  PutDataResponse(T&& key_in, U&& relay_node_in, V&& result_in)
-      : key{std::forward<T>(key_in)},
-        relay_node{std::forward<U>(relay_node_in)},
-        result{std::forward<V>(result_in)} {}
+  GetGroupKeyResponse(T&& key, U&& data, V&& relay_node)
+      : key{std::forward<T>(key)},
+        data{std::forward<U>(data)},
+        relay_node{std::forward<U>(relay_node)} {}
 
   template <typename T, typename U>
-  PutDataResponse(T&& key_in, U&& result_in)
-      : key{std::forward<T>(key_in)}, result{std::forward<U>(result_in)} {}
+  GetGroupKeyResponse(T&& key, U&& data)
+      : key{std::forward<T>(key)}, data{std::forward<U>(data)} {}
 
-  PutDataResponse(PutDataResponse&& other) MAIDSAFE_NOEXCEPT
-      : key{std::move(other.key)},
-        relay_node{std::move(other.relay_node)},
-        result{std::move(other.result)} {}
+  GetGroupKeyResponse(GetGroupKeyResponse&& other) MAIDSAFE_NOEXCEPT : key{std::move(other.key)},
+                                                                       data{std::move(other.data)} {
+  }
 
-  PutDataResponse& operator=(PutDataResponse&& other) MAIDSAFE_NOEXCEPT {
+  GetGroupKeyResponse& operator=(GetGroupKeyResponse&& other) MAIDSAFE_NOEXCEPT {
     key = std::move(other.key);
-    relay_node = std::move(other.relay_node);
-    result = std::move(other.result);
+    data = std::move(other.data);
     return *this;
   }
 
-  PutDataResponse(const PutDataResponse&) = delete;
-  PutDataResponse& operator=(const PutDataResponse&) = delete;
+  GetGroupKeyResponse(const GetGroupKeyResponse&) = delete;
+  GetGroupKeyResponse& operator=(const GetGroupKeyResponse&) = delete;
 
   void operator()() {}
 
   template <typename Archive>
   void serialize(Archive& archive) {
-    archive(key, relay_node, result);
+    archive(key, data, relay_node);
   }
 
-  Address key;
+  GroupAddress key;
+  std::vector<PublicPmid> data;
   boost::optional<Address> relay_node;
-  maidsafe_error result;
 };
 
 }  // namespace routing
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_ROUTING_MESSAGES_PUT_DATA_RESPONSE_H_
+#endif  // MAIDSAFE_ROUTING_MESSAGES_GET_GROUPKEY_RESPONSE_H_

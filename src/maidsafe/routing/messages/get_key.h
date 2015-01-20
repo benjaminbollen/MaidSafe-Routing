@@ -16,62 +16,54 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_ROUTING_TESTS_UTILS_ROUTING_TABLE_UNIT_TEST_H_
-#define MAIDSAFE_ROUTING_TESTS_UTILS_ROUTING_TABLE_UNIT_TEST_H_
+#ifndef MAIDSAFE_ROUTING_MESSAGES_GET_KEY_H_
+#define MAIDSAFE_ROUTING_MESSAGES_GET_KEY_H_
 
-#include <array>
-#include <cstdint>
-#include <vector>
+#include "boost/optional.hpp"
 
-#include "maidsafe/common/node_id.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/routing/types.h"
-#include "maidsafe/routing/tests/utils/test_utils.h"
-
-#include "maidsafe/routing/node_info.h"
-#include "maidsafe/routing/routing_table.h"
 #include "maidsafe/routing/types.h"
 
 namespace maidsafe {
 
 namespace routing {
 
-namespace test {
+struct GetKey {
+  GetKey() = default;
+  ~GetKey() = default;
 
-class RoutingTableUnitTest : public testing::Test {
- public:
-  struct Bucket {
-    Bucket() = default;
-    Bucket(const Address& furthest_from_tables_own_id, unsigned index_in);
-    unsigned index;
-    Address far_contact, mid_contact, close_contact;
-  };
+  template <typename T, typename U>
+  GetKey(T&& key, U&& relay_node)
+      : key{std::forward<T>(key)}, relay_node{std::forward<T>(relay_node)} {}
 
- protected:
-  using Buckets = std::array<Bucket, 100>;
+  template <typename T>
+  GetKey(T&& key)
+      : key{std::forward<T>(key)} {}
 
-  RoutingTableUnitTest();
+  GetKey(GetKey&& other) MAIDSAFE_NOEXCEPT : key{std::move(other.key)},
+                                             relay_node{std::move(other.relay_node)} {}
 
-  void PartiallyFillTable();
-  void CompleteFillingTable();
+  GetKey& operator=(GetKey&& other) MAIDSAFE_NOEXCEPT {
+    key = std::move(other.key);
+    relay_node = std::move(other.relay_node);
+    return *this;
+  }
 
-  const Address our_id_;
-  const passport::Pmid fob_;
-  const passport::PublicPmid public_fob_;
-  RoutingTable table_;
-  const Buckets buckets_;
-  NodeInfo info_;
-  const size_t initial_count_;
-  std::vector<Address> added_ids_;
+  GetKey(const GetKey&) = delete;
+  GetKey& operator=(const GetKey&) = delete;
 
- private:
-  Buckets InitialiseBuckets();
+  void operator()() {}
+
+  template <typename Archive>
+  void serialize(Archive& archive) {
+    archive(key, relay_node);
+  }
+
+  KeyType key_requested;
+  boost::optional<Address> relay_node;
 };
-
-}  // namespace test
 
 }  // namespace routing
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_ROUTING_TESTS_UTILS_ROUTING_TABLE_UNIT_TEST_H_
+#endif  // MAIDSAFE_ROUTING_MESSAGES_GET_KEY_H_

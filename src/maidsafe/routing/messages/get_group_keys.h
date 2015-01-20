@@ -16,10 +16,10 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_ROUTING_MESSAGES_RESPONSE_H_
-#define MAIDSAFE_ROUTING_MESSAGES_RESPONSE_H_
+#ifndef MAIDSAFE_ROUTING_MESSAGES_GET_GROUPKEY_H_
+#define MAIDSAFE_ROUTING_MESSAGES_GET_GROUPKEY_H_
 
-#include <vector>
+#include "boost/optional.hpp"
 
 #include "maidsafe/routing/types.h"
 
@@ -27,47 +27,43 @@ namespace maidsafe {
 
 namespace routing {
 
-struct Response {
-  Response() = default;
-  ~Response() = default;
+struct GetGroupKey {
+  GetKey() = default;
+  ~GetKey() = default;
 
-  template<typename T, typename U, typename V>
-  Response(T&& key_in, U&& data_in, V&& checksum_in)
-      : key{std::forward<T>(key_in)},
-        data{std::forward<U>(data_in)},
-        checksum{std::forward<V>(checksum_in)} {}
+  template <typename T, typename U>
+  GetGroupKey(T&& key, U&& relay_node)
+      : key{std::forward<T>(key)}, relay_node{std::forward<T>(relay_node)} {}
 
-  Response(Response&& other) MAIDSAFE_NOEXCEPT
-      : key(std::move(other.key)),
-        data(std::move(other.data)),
-        checksum(std::move(other.checksum)) {}
+  template <typename T>
+  GetGroupKey(T&& key)
+      : key{std::forward<T>(key)} {}
 
-  Response& operator=(Response&& other) MAIDSAFE_NOEXCEPT {
+  GetGroupKey(GetKey&& other) MAIDSAFE_NOEXCEPT : key{std::move(other.key)},
+                                             relay_node{std::move(other.relay_node)} {}
+
+  GetGroupKey& operator=(GetKey&& other) MAIDSAFE_NOEXCEPT {
     key = std::move(other.key);
-    data = std::move(other.data);
-    checksum = std::move(other.checksum);
+    relay_node = std::move(other.relay_node);
     return *this;
   }
 
-  Response(const Response&) = delete;
-  Response& operator=(const Response&) = delete;
+  GetGroupKey(const GetKey&) = delete;
+  GetGroupKey& operator=(const GetKey&) = delete;
 
-  void operator()() {
+  void operator()() {}
 
-  }
-
-  template<typename Archive>
+  template <typename Archive>
   void serialize(Archive& archive) {
-    archive(key, data, checksum);
+    archive(key, relay_node);
   }
 
-  Address key;
-  SerialisedMessage data;
-  std::vector<crypto::SHA1Hash> checksum;
+  GroupAddress key_requested;
+  boost::optional<Address> relay_node;
 };
 
 }  // namespace routing
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_ROUTING_MESSAGES_RESPONSE_H_
+#endif  // MAIDSAFE_ROUTING_MESSAGES_GET_GROUPKEY_H_
