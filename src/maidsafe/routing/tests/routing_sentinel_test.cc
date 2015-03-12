@@ -53,12 +53,12 @@ class SignatureGroup {
     }
   }
 
-  GroupAddress Address() { return group_address_; }
+  GroupAddress SignatureGroupAddress() { return group_address_; }
 
-  std::vector<passport::PublicPmid> GetPublicKeys() {
-      std::vector<passport::PublicPmid> result;
+  std::map<Address, asymm::PublicKey> GetPublicKeys() {
+      std::map<Address, asymm::PublicKey> result;
       for (auto node : nodes_)
-          result.push_back(passport::PublicPmid(node));
+          result.insert(std::make_pair(Address(node.name()), asymm::PublicKey(node.public_key())));
       return result;
   }
 
@@ -137,7 +137,7 @@ void SentinelTest::AddCorrectGroup(GroupAddress group_address,
                                    Authority authority) {
   auto itr = std::find_if(std::begin(groups_), std::end(groups_),
                           [group_address](SignatureGroup group_)
-                          { return group_.Address() == group_address; });
+                          { return group_.SignatureGroupAddress() == group_address; });
   if (itr == std::end(groups_))
       groups_.push_back(SignatureGroup(group_address, group_size, active_quorum, authority));
   else assert("Sentinel test AddCorrectGroup: Group already exists");
@@ -153,7 +153,7 @@ void SentinelTest::SimulateMessage(GroupAddress group_address,
 
   auto itr = std::find_if(std::begin(groups_), std::end(groups_),
                           [group_address](SignatureGroup group_)
-                          { return group_.Address() == group_address; });
+                          { return group_.SignatureGroupAddress() == group_address; });
   if (itr == std::end(groups_)) assert("Sentinel test SimulateMessage: debug Error in test");
   else {
     auto headers = itr->GetHeaders(our_destination_,
@@ -167,7 +167,7 @@ void SentinelTest::SimulateMessage(GroupAddress group_address,
 SentinelReturns SentinelTest::GetSentinelReturns(GroupAddress group_address) {
   auto itr = std::find_if(std::begin(groups_), std::end(groups_),
                           [group_address](SignatureGroup group_)
-                          { return group_.Address() == group_address; });
+                          { return group_.SignatureGroupAddress() == group_address; });
   if (itr == std::end(groups_)) {
     assert("Sentinel test GetSentinelReturns: debug Error in test");
     return SentinelReturns();
@@ -181,27 +181,27 @@ void SentinelTest::SendGetClientKey(Address /*node_address*/) {
 
 }
 
-void SentinelTest::SendGetGroupKey(GroupAddress /*group_address*/) {
-//  //std::lock_guard<std::mutex> lock(mutex_);
-//  auto itr = std::find_if(std::begin(groups_), std::end(groups_),
-//                          [group_address](SignatureGroup group_)
-//                          { return group_.Address() == group_address; });
+void SentinelTest::SendGetGroupKey(GroupAddress group_address) {
+  //std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = std::find_if(std::begin(groups_), std::end(groups_),
+                          [group_address](SignatureGroup group_)
+                          { return group_.SignatureGroupAddress() == group_address; });
 
-//  if (itr == std::end(groups_)) assert("Sentinel test SendGetGroupKey: debug Error in test");
-//  else {
-//    auto message(Serialise(GetGroupKeyResponse(itr->GetPublicKeys(),
-//                                               itr->Address())));
-//    auto headers = itr->GetHeaders(our_destination_,
-//                                   MessageId(RandomUint32()),
-//                                   message);
+  if (itr == std::end(groups_)) assert("Sentinel test SendGetGroupKey: debug Error in test");
+  else {
+    auto message(Serialise(GetGroupKeyResponse(itr->GetPublicKeys(),
+                                               itr->SignatureGroupAddress())));
+    auto headers = itr->GetHeaders(our_destination_,
+                                   MessageId(RandomUint32()),
+                                   message);
 
-//    for (auto header : headers) {
-//        itr->SaveSentinelReturn(
-//                    sentinel_.Add(header, MessageTypeTag::GetGroupKeyResponse,
-//                                  message));
-//    }
-//  }
-//  static_cast<void>(itr);
+    for (auto header : headers) {
+        itr->SaveSentinelReturn(
+                    sentinel_.Add(header, MessageTypeTag::GetGroupKeyResponse,
+                                  message));
+    }
+  }
+  static_cast<void>(itr);
 }
 
 //++++ Free Test Functions +++++++++++++++++++++

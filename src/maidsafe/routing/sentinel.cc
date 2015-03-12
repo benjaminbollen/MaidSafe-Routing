@@ -235,15 +235,15 @@ Sentinel::Resolve(const std::vector<ResultType>& verified_messages, GroupMessage
         return verified_messages.at(index);
     }
   } else {  // account transfer
-    std::vector<std::unique_ptr<AccountTransferInfo>> accounts;
+/*    std::vector<std::unique_ptr<AccountTransferInfo>> accounts;
     for (const auto& message : verified_messages)
        accounts.emplace_back(Parse<std::unique_ptr<AccountTransferInfo>>(std::get<2>(message)));
     auto merged_value_ptr((*accounts.begin())->Merge(accounts));
     if (merged_value_ptr) {
       auto result(*verified_messages.begin());
       std::get<2>(result) = Serialise(*merged_value_ptr);
-      return result;
-    }
+      return result;*/
+    return boost::none;
   }
 
   return boost::none;

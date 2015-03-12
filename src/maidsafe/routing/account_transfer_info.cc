@@ -31,8 +31,6 @@ AccountTransferInfo::NameAndTypeId::NameAndTypeId(Identity name_in, DataTypeId t
 AccountTransferInfo::NameAndTypeId::NameAndTypeId()
     : name(), type_id(std::numeric_limits<DataTypeId::value_type>::max()) {}
 
-AccountTransferInfo::NameAndTypeId::NameAndTypeId(const NameAndTypeId&) = default;
-
 AccountTransferInfo::NameAndTypeId::NameAndTypeId(NameAndTypeId&& other) MAIDSAFE_NOEXCEPT
     : name(std::move(other.name)), type_id(std::move(other.type_id)) {}
 

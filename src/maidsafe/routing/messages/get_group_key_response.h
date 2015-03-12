@@ -33,7 +33,7 @@ class GetGroupKeyResponse {
   GetGroupKeyResponse() = default;
   ~GetGroupKeyResponse() = default;
 
-  GetGroupKeyResponse(std::map<Address, asymm::PublicKey>& public_keys, GroupAddress target_id)
+  GetGroupKeyResponse(std::map<Address, asymm::PublicKey> public_keys, GroupAddress target_id)
       : public_keys_(std::move(public_keys)),
         target_id_(std::move(target_id)) {}
 

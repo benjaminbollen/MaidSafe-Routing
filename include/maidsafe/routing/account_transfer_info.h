@@ -38,7 +38,7 @@ class AccountTransferInfo {
   struct NameAndTypeId {
     NameAndTypeId(Identity name_in, DataTypeId type_id_in);
     NameAndTypeId();
-    NameAndTypeId(const NameAndTypeId&);
+    NameAndTypeId(const NameAndTypeId&) = default;
     NameAndTypeId(NameAndTypeId&& other) MAIDSAFE_NOEXCEPT;
     NameAndTypeId& operator=(const NameAndTypeId&);
     NameAndTypeId& operator=(NameAndTypeId&& other) MAIDSAFE_NOEXCEPT;
