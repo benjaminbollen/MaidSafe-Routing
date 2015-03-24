@@ -33,30 +33,33 @@ namespace routing {
 
 namespace test {
 
-std::vector<passport::Pmid> CreatePmids(size_t quantity) {
-  std::vector<passport::Pmid> pmids;
+using GroupsOfGroup = std::vector<std::pair<Identity,std::vector<Identity>>>;
+
+std::vector<Identity> CreateIdentities(size_t quantity) {
+  std::vector<Identity> identities;
   while (quantity-- > 0)
-    pmids.emplace_back(passport::CreatePmidAndSigner().first);
-  return pmids;
+    identities.emplace_back(Identity(RandomBytes(identity_size)));
+  return identities;
 }
 
-void SortPmids(std::vector<passport::Pmid>& pmids, const Address& target) {
-  std::sort(pmids.begin(), pmids.end(),
-            [&](const passport::Pmid& lhs, const passport::Pmid& rhs) {
-              return CloserToTarget(Identity(lhs.name()), Identity(rhs.name()), target);
+void SortIdentities(std::vector<Identities>& network, const Identity& target) {
+  std::sort(network.begin(), network.end(),
+            [&](const Identity& lhs, const Identity& rhs) {
+              return CloserToTarget(lhs, rhs, target);
             });
 }
 
-// returns first N pmid names from input vector
+// returns first N identities from sorted network
 template <size_t N>
-std::vector<Identity> GetPmidNames(const std::vector<passport::Pmid>& pmids) {
-  std::vector<Identity> pmid_names;
-  size_t size(pmids.size() < N ? pmids.size() : N);
+std::vector<Identity> GetIdentities(const std::vector<Identity>& network) {
+  std::vector<Identity> selected_identites;
+  size_t size(network.size() < N ? network.size() : N);
   for (size_t i = 0; i != size; ++i)
-    pmid_names.push_back(pmids[i].name());
-  return pmid_names;
+    selected_identites.push_back(network[i]);
+  return selected_identites;
 }
 
+/*
 std::vector<std::pair<size_t, Identity>>
     GetCountedCommonPmidNames(std::vector<std::vector<Identity>>& pmids) {
   assert(pmids.size() >= GroupSize);
@@ -85,17 +88,50 @@ std::vector<std::pair<size_t, Identity>>
 
   return count_pmid_pairs;
 }
+*/
 
+std::vector<std::pair<size_t, Identity>>
+    FrequencyCount(GroupsOfGroup pmids) {
+  assert(pmids.size() >= GroupSize);
+  for (size_t i = 0; i != pmids.size(); ++i)
+    if (pmids[i].size() < GroupSize)
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
+
+  std::multiset<Identity> all_pmids;
+  std::set<Identity> unique_pmids;
+  std::vector<std::pair<size_t, Identity>> count_pmid_pairs;
+
+
+
+  for (size_t i = 0; i != pmids.size(); ++i) {
+    for (size_t j = 0; j != pmids[i].size(); ++j) {
+      all_pmids.insert(pmids[i][j]);
+      unique_pmids.insert(pmids[i][j]);
+    }
+  }
+
+  for (const auto& pmid : unique_pmids)
+    count_pmid_pairs.push_back(std::make_pair(all_pmids.count(pmid), pmid));
+
+  std::sort(count_pmid_pairs.begin(), count_pmid_pairs.end(),
+            [](const std::pair<size_t, Identity>& lhs, const std::pair<size_t, Identity>& rhs) {
+              return lhs.first < rhs.first;
+            });
+
+  return count_pmid_pairs;
+}
 
 TEST(GroupQuorumLogicTest, FUNC_Merge) {
-  auto pmids(CreatePmids(500));
-  SortPmids(pmids, Address(Identity(RandomBytes(identity_size))));
+  auto network(CreatePmids(500));
+  auto group_address(Address(Identity(RandomBytes(identity_size))));
+  SortPmids(pmids, group_address);
   std::vector<Identity> address_sorted_pmids(GetPmidNames<GroupSize>(pmids));
-  std::vector<std::vector<Identity>> closest_pmids;
+  std::vector<std::pair<Identity,std::vector<Identity>>> closest_pmids;
 
   for (size_t i = 0; i != address_sorted_pmids.size(); ++i) {
     SortPmids(pmids, Address(address_sorted_pmids[i]));
-    closest_pmids.push_back(GetPmidNames<GroupSize>(pmids));
+    closest_pmids.push_back(std::make_pair(address_sorted_pmids[i],
+                                           GetPmidNames<GroupSize>(pmids)));
   }
 
   auto count_pmid_pairs(GetCountedCommonPmidNames(closest_pmids));
